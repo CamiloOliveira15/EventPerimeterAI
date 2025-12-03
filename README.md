@@ -1,90 +1,83 @@
 # EventPerimeterAI
 
-**EventPerimeterAI** is an advanced intelligent monitoring system designed for real-time surveillance, digital perimeter security, and License Plate Recognition (LPR). It features a modern Web Dashboard for continuous monitoring of multiple cameras with minimal latency.
+**EventPerimeterAI** é um sistema avançado de monitoramento inteligente projetado para vigilância em tempo real, segurança perimetral digital e Reconhecimento de Placas (LPR). Ele possui um Painel Web moderno para monitoramento contínuo de múltiplas câmeras com latência mínima.
 
-## 🚀 Features
+## 🚀 Funcionalidades
 
-*   **Web Dashboard**: A responsive, dark-themed web interface to monitor multiple cameras simultaneously.
-*   **Minimal Freezing**: Decoupled architecture ensures smooth video playback even during heavy AI processing.
-*   **Digital Perimeters**: Define "Recording Zones" (Blue) and "Violation Zones" (Red) for each camera.
-*   **Violation Detection**: Automatically detects objects (people, vehicles) staying in a violation zone for too long.
-*   **License Plate Recognition (LPR)**: Captures and reads license plates of vehicles involved in violations using PaddleOCR.
-*   **Automatic Recording**:
-    *   **Video**: Records in 4K (if available) when activity is detected.
-    *   **Audio**: Captures audio alongside video.
-    *   **Smart Merging**: Automatically merges video and audio into a single `.mp4` file with corrected playback speed.
-*   **Multi-Camera Support**: Scalable design supporting multiple camera feeds.
+*   **Painel Web**: Uma interface web responsiva e com tema escuro para monitorar várias câmeras simultaneamente.
+*   **Configuração de Zonas ao Vivo**: Desenhe e atualize zonas de "Gravação" (Azul) e "Violação" (Vermelho) diretamente no feed de vídeo, sem precisar reiniciar o sistema.
+*   **Controles Granulares de Câmera**:
+    *   **Power**: Ativar/Desativar câmera.
+    *   **AI Monitor**: Ativar/Desativar processamento de IA.
+    *   **Rec**: Iniciar/Parar gravação manual.
+    *   **Snap**: Tirar foto instantânea.
+    *   **Zone Toggles**: Ativar/Desativar a visualização das zonas.
+*   **Detecção de Violação**: Detecta automaticamente objetos (pessoas, veículos) que permanecem em uma zona de violação por muito tempo.
+*   **Reconhecimento de Placas (LPR)**: Captura e lê placas de veículos envolvidos em violações usando PaddleOCR.
+*   **Gravação Automática**:
+    *   **Vídeo**: Grava em 4K (se disponível) quando atividade é detectada nas zonas.
+    *   **Áudio**: Captura áudio junto com o vídeo.
+    *   **Mesclagem Inteligente**: Mescla automaticamente vídeo e áudio em um arquivo `.mp4` com velocidade de reprodução corrigida.
+*   **Suporte Multi-Câmera**: Design escalável que suporta múltiplos feeds de câmera.
 
-## 🛠️ Tech Stack
+## 🛠️ Tecnologias
 
 *   **Backend**: Python 3.10+, FastAPI
-*   **AI**: YOLOv8 (Object Tracking), PaddleOCR (LPR)
-*   **Video Processing**: OpenCV, MoviePy
-*   **Frontend**: HTML5, JavaScript, CSS (Jinja2 Templates)
+*   **IA**: YOLOv8 (Rastreamento de Objetos), PaddleOCR (LPR)
+*   **Processamento de Vídeo**: OpenCV, MoviePy
+*   **Frontend**: HTML5, JavaScript, CSS (Templates Jinja2)
 
-## 📦 Installation
+## 📦 Instalação
 
-### Prerequisites
+### Pré-requisitos
 *   Python 3.10+
-*   A webcam (or multiple)
+*   Uma webcam (ou múltiplas)
 
-### Setup
+### Configuração
 
-1.  **Clone the repository**
+1.  **Clone o repositório**
     ```bash
     git clone https://github.com/CamilloOliveira15/EventPerimeterAI.git
     cd EventPerimeterAI
     ```
 
-2.  **Install Dependencies**
+2.  **Instale as Dependências**
     ```bash
     pip install -r requirements.txt
     ```
-    *Note: Ensure you have `fastapi`, `uvicorn`, `ultralytics`, `paddlepaddle`, `paddleocr`, `opencv-python`, `moviepy`, and `sounddevice` installed.*
+    *Nota: Certifique-se de ter `fastapi`, `uvicorn`, `ultralytics`, `paddlepaddle`, `paddleocr`, `opencv-python`, `moviepy` e `sounddevice` instalados.*
 
-## 🚦 Usage
+## 🚦 Uso
 
-### 1. Define Perimeters
-Before running the dashboard, you must define the zones for each camera.
-
-**For Camera 0:**
-```bash
-python configure_zones.py --camera 0
-```
-*   **Left Click**: Add points.
-*   **'n'**: Confirm current zone (Recording -> Violation).
-*   **'s'**: Save configuration.
-
-**For Camera 1 (if available):**
-```bash
-python configure_zones.py --camera 1
-```
-
-### 2. Run the Dashboard
-Start the central monitoring server:
+### 1. Inicie o Painel
+Inicie o servidor central de monitoramento:
 
 ```bash
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-### 3. Access the Monitor
-Open your web browser and navigate to:
+### 2. Acesse o Monitor
+Abra seu navegador e vá para:
 **[http://localhost:8000](http://localhost:8000)**
 
-You will see the live feed from all configured cameras. The system will automatically record and log violations in the background.
+### 3. Configure as Zonas
+1.  No painel, clique em **"Draw Rec (Blue)"** ou **"Draw Vio (Red)"** abaixo da câmera desejada.
+2.  Clique no vídeo para desenhar os pontos do polígono.
+3.  Clique em **"Save"** para aplicar a zona instantaneamente.
 
-## 📂 Project Structure
+O sistema começará a monitorar, gravar e registrar violações automaticamente com base nas suas configurações.
+
+## 📂 Estrutura do Projeto
 
 ```text
 EventPerimeterAI/
 ├── app/
-│   ├── main.py            # FastAPI Server Entry Point
-│   ├── camera_manager.py  # Threaded Camera Handling
-│   ├── ai_processor.py    # AI Logic (YOLO + OCR)
+│   ├── main.py            # Ponto de Entrada do Servidor FastAPI
+│   ├── camera_manager.py  # Gerenciamento de Câmera com Threads
+│   ├── ai_processor.py    # Lógica de IA (YOLO + OCR)
 │   ├── templates/
-│   │   └── index.html     # Web Dashboard UI
-│   └── static/            # CSS/JS Assets
-├── configure_zones.py     # Tool to define zones
-├── perimeters.json        # Zone Configurations
-└── requirements.txt       # Project Dependencies
+│   │   └── index.html     # Painel Web
+│   └── static/            # Assets CSS/JS
+├── perimeters.json        # Configurações de Zonas (Salvas automaticamente)
+└── requirements.txt       # Dependências do Projeto
 ```
