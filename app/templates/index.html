@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventPerimeterAI Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 300;
+        }
+
+        .status-badge {
+            background-color: #28a745;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .camera-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 20px;
+        }
+
+        .camera-card {
+            background-color: #2d2d2d;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .camera-header {
+            padding: 10px 15px;
+            background-color: #333;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .camera-feed-container {
+            position: relative;
+            width: 100%;
+            /* Maintain aspect ratio */
+            aspect-ratio: 16/9;
+            background-color: #000;
+        }
+
+        .camera-feed {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .drawing-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            pointer-events: none;
+            /* Pass through clicks unless editing */
+        }
+
+        .drawing-canvas.editing {
+            pointer-events: all;
+            border: 2px solid #ffc107;
+        }
+
+        .alert-banner {
+            background-color: #dc3545;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+            display: none;
+            /* Hidden by default */
+            border-radius: 4px;
+            font-weight: bold;
+            animation: pulse 1s infinite;
+        }
+
+        .camera-controls {
+            padding: 10px;
+            background-color: #222;
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 5px 10px;
+            border: 1px solid #555;
+            background-color: #333;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: background-color 0.2s;
+        }
+
+        .control-btn.active {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+
+        .control-btn.danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .control-btn:hover {
+            opacity: 0.9;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.8;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>EventPerimeterAI <span style="color: #007bff;">Monitor</span></h1>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <span class="status-badge">System Active</span>
+            <button onclick="shutdownSystem()"
+                style="background-color: #dc3545; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Shutdown</button>
+        </div>
+    </header>
+
+    <div id="alert-banner" class="alert-banner">
+        VIOLATION DETECTED!
+    </div>
+
+    <div class="camera-grid">
+        {% for cam_id in cameras %}
+        <div class="camera-card">
+            <div class="camera-header">
+                <span>Camera {{ cam_id }}</span>
+                <span>Live</span>
+            </div>
+            <div class="camera-feed-container">
+                <img src="/video_feed/{{ cam_id }}" class="camera-feed" alt="Camera {{ cam_id }} Feed">
+                <canvas id="canvas-{{ cam_id }}" class="drawing-canvas"></canvas>
+            </div>
+            <div class="camera-controls">
+                <button class="control-btn active" onclick="toggleFeature(this, {{ cam_id }}, 'active')">Power</button>
+                <button class="control-btn active" onclick="toggleFeature(this, {{ cam_id }}, 'monitoring')">AI
+                    Monitor</button>
+                <button class="control-btn active" onclick="toggleFeature(this, {{ cam_id }}, 'recording')">Rec</button>
+                <button class="control-btn active"
+                    onclick="toggleFeature(this, {{ cam_id }}, 'snapshots')">Snap</button>
+                <button class="control-btn active" style="border-color: #007bff;"
+                    onclick="toggleFeature(this, {{ cam_id }}, 'zone_recording')">Zone: Rec</button>
+                <button class="control-btn active" style="border-color: #dc3545;"
+                    onclick="toggleFeature(this, {{ cam_id }}, 'zone_violation')">Zone: Vio</button>
+                <button class="control-btn danger" onclick="resetCamera({{ cam_id }})">Reset</button>
+            </div>
+            <div class="camera-controls" style="border-top: 1px solid #444; margin-top: 5px; padding-top: 10px;">
+                <span style="font-size: 0.8em; color: #aaa;">Edit Zones:</span>
+                <button class="control-btn" onclick="startDrawing({{ cam_id }}, 'recording_zone')">Draw Rec
+                    (Blue)</button>
+                <button class="control-btn" onclick="startDrawing({{ cam_id }}, 'violation_zone')">Draw Vio
+                    (Red)</button>
+                <button class="control-btn" onclick="saveZone({{ cam_id }})" id="save-btn-{{ cam_id }}"
+                    style="display:none; background-color: #28a745;">Save</button>
+                <button class="control-btn" onclick="cancelDrawing({{ cam_id }})" id="cancel-btn-{{ cam_id }}"
+                    style="display:none; background-color: #6c757d;">Cancel</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        // Future: WebSocket for real-time status updates (alerts, recording status)
+        console.log("Dashboard loaded.");
+
+        // Drawing State
+        const drawingState = {}; // {camId: {points: [], type: 'recording_zone'|'violation_zone', isDrawing: bool}}
+
+        function startDrawing(camId, type) {
+            const canvas = document.getElementById(`canvas-${camId}`);
+            const ctx = canvas.getContext('2d');
+
+            // Reset state
+            drawingState[camId] = { points: [], type: type, isDrawing: true };
+
+            // UI Updates
+            canvas.classList.add('editing');
+            document.getElementById(`save-btn-${camId}`).style.display = 'inline-block';
+            document.getElementById(`cancel-btn-${camId}`).style.display = 'inline-block';
+
+            // Resize canvas to match display size
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            // Clear previous
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Add Click Listener
+            canvas.onclick = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                drawingState[camId].points.push([x, y]);
+                drawPolygon(camId);
+            };
+        }
+
+        function drawPolygon(camId) {
+            const state = drawingState[camId];
+            const canvas = document.getElementById(`canvas-${camId}`);
+            const ctx = canvas.getContext('2d');
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.beginPath();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = state.type === 'recording_zone' ? '#007bff' : '#dc3545';
+            ctx.fillStyle = state.type === 'recording_zone' ? 'rgba(0, 123, 255, 0.3)' : 'rgba(220, 53, 69, 0.3)';
+
+            if (state.points.length > 0) {
+                ctx.moveTo(state.points[0][0], state.points[0][1]);
+                for (let i = 1; i < state.points.length; i++) {
+                    ctx.lineTo(state.points[i][0], state.points[i][1]);
+                }
+                ctx.closePath();
+                ctx.stroke();
+                ctx.fill();
+
+                // Draw points
+                ctx.fillStyle = '#fff';
+                for (let p of state.points) {
+                    ctx.beginPath();
+                    ctx.arc(p[0], p[1], 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        async function saveZone(camId) {
+            const state = drawingState[camId];
+            if (!state || state.points.length < 3) {
+                alert("Please draw at least 3 points.");
+                return;
+            }
+
+            const canvas = document.getElementById(`canvas-${camId}`);
+
+            // Normalize points (0-1)
+            const normalizedPoints = state.points.map(p => [
+                p[0] / canvas.width,
+                p[1] / canvas.height
+            ]);
+
+            try {
+                const response = await fetch(`/camera/${camId}/update_zone`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: state.type, points: normalizedPoints })
+                });
+                const data = await response.json();
+                if (data.status === 'ok') {
+                    alert("Zone saved successfully!");
+                    cancelDrawing(camId);
+                } else {
+                    alert("Error saving zone: " + data.error);
+                }
+            } catch (e) {
+                alert("Network error: " + e);
+            }
+        }
+
+        function cancelDrawing(camId) {
+            const canvas = document.getElementById(`canvas-${camId}`);
+            const ctx = canvas.getContext('2d');
+
+            canvas.classList.remove('editing');
+            canvas.onclick = null;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            document.getElementById(`save-btn-${camId}`).style.display = 'none';
+            document.getElementById(`cancel-btn-${camId}`).style.display = 'none';
+
+            delete drawingState[camId];
+        }
+
+        async function toggleFeature(btn, camId, feature) {
+            const isEnabled = !btn.classList.contains('active');
+            try {
+                const response = await fetch(`/camera/${camId}/${feature}/${isEnabled}`, { method: 'POST' });
+                const data = await response.json();
+                if (data.status === 'ok') {
+                    if (isEnabled) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                } else {
+                    alert("Error: " + data.error);
+                }
+            } catch (e) {
+                alert("Network error: " + e);
+            }
+        }
+
+        async function resetCamera(camId) {
+            if (confirm("Reset camera settings to default?")) {
+                try {
+                    await fetch(`/camera/${camId}/reset/true`, { method: 'POST' });
+                    location.reload(); // Reload to reset button states
+                } catch (e) {
+                    alert("Error: " + e);
+                }
+            }
+        }
+
+        async function shutdownSystem() {
+            if (confirm("Are you sure you want to stop the monitoring system?")) {
+                try {
+                    await fetch('/shutdown', { method: 'POST' });
+                    alert("System is shutting down. You can close this tab.");
+                    document.body.innerHTML = "<h1 style='color: white; text-align: center; margin-top: 50px;'>System Shutdown</h1>";
+                } catch (e) {
+                    alert("Error shutting down: " + e);
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>
